@@ -41,6 +41,133 @@
 		var singlePlayer = true;
 		board = [[B_ROOK,B_KNIGHT,B_BISHOP,B_QUEEN,B_KING,B_BISHOP,B_KNIGHT,B_ROOK],[B_PAWN,B_PAWN,B_PAWN,B_PAWN,B_PAWN,B_PAWN,B_PAWN,B_PAWN],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[W_PAWN,W_PAWN,W_PAWN,W_PAWN,W_PAWN,W_PAWN,W_PAWN,W_PAWN],[W_ROOK,W_KNIGHT,W_BISHOP,W_QUEEN,W_KING,W_BISHOP,W_KNIGHT,W_ROOK]];
 		document.write("<img style='position:absolute; left:"+X_OFFSET+"px; top:"+Y_OFFSET+"px' width='"+SIZE*8+"' height='"+SIZE*8+"' alt='Board' id='boardPic' src='chessboard.jpg'>");
+		function legalMoves(x,y) {
+			var p = board[y][x];
+			var moves = new Array();
+			if(p==W_PAWN || p==B_PAWN)
+			{
+				if(p>0) direction=-1; else direction=1;
+				if(y+direction<8 && y+direction>=0 && board[y+direction][x]==EMPTY) add(moves, x,y+direction);
+				if( ( (p>0 && y==6) || ( p<0 && y==1) ) && board[y+direction][x]==EMPTY && board[y+2*direction][x]==EMPTY) add(moves, x,y+2*direction);
+				if(x+1<8 && y+direction<8 && y+direction>=0 && areEnemies(p, board[y+direction][x+1]) ) add(moves, x+1,y+direction);
+				if(x-1>=0 && y+direction<8 && y+direction>=0 && areEnemies(p, board[y+direction][x-1]) ) add(moves, x-1,y+direction);
+			}
+			else if(p==W_KNIGHT || p==B_KNIGHT)
+			{
+				for(var i=-2; i<=2; i++)
+					for(var j=-2; j<=2; j++)
+					{
+						var testx = i+x; var testy = j+y;
+						if(i!=0 && j!=0 && Math.abs(i)!=Math.abs(j) && testx>=0 && testx<8 && testy>=0 && testy<8 && ( board[testy][testx]==EMPTY || areEnemies(p, board[testy][testx]) ) )
+							add(moves, testx,testy);
+					}
+			}
+			else if(p==W_BISHOP || p==B_BISHOP)
+			{
+				for(var xdir=-1; xdir<=1; xdir+=2)
+				{
+					for(var ydir=-1; ydir<=1; ydir+=2)
+					{
+						var i=x+xdir; var j=y+ydir;
+						while(j>=0 && j<8 && i>=0 && i<8 && (board[j][i]==EMPTY || areEnemies(p, board[j][i])) )
+						{
+							add(moves, i,j);
+							if(board[j][i]!=EMPTY) break;
+							i+=xdir; j+=ydir;
+						}
+					}
+				}
+			}
+			else if(p==W_ROOK || p==B_ROOK)
+			{
+				for(var xdir=-1; xdir<=1; xdir++)
+				{
+					for(var ydir=-1; ydir<=1; ydir++)
+					{
+						if(Math.abs(xdir)!=Math.abs(ydir))
+						{
+							var i=x+xdir; var j=y+ydir;
+							while(j>=0 && j<8 && i>=0 && i<8 && (board[j][i]==EMPTY || areEnemies(p, board[j][i])) )
+							{
+								add(moves, i,j);
+								if(board[j][i]!=EMPTY) break;
+								i+=xdir; j+=ydir;
+							}
+						}
+					}
+				}
+			}
+			if(p==W_QUEEN || p==B_QUEEN)
+			{
+				for(var xdir=-1; xdir<=1; xdir+=2)
+				{
+					for(var ydir=-1; ydir<=1; ydir+=2)
+					{
+						var i=x+xdir; var j=y+ydir;
+						while(j>=0 && j<8 && i>=0 && i<8 && (board[j][i]==EMPTY || areEnemies(p, board[j][i])) )
+						{
+							add(moves, i,j);
+							if(board[j][i]!=EMPTY) break;
+							i+=xdir; j+=ydir;
+						}
+					}
+				}
+				for(var xdir=-1; xdir<=1; xdir++)
+				{
+					for(var ydir=-1; ydir<=1; ydir++)
+					{
+						if(Math.abs(xdir)!=Math.abs(ydir))
+						{
+							var i=x+xdir; var j=y+ydir;
+							while(j>=0 && j<8 && i>=0 && i<8 && (board[j][i]==EMPTY || areEnemies(p, board[j][i])) )
+							{
+								add(moves, i,j);
+								if(board[j][i]!=EMPTY) break;
+								i+=xdir; j+=ydir;
+							}
+						}
+					}
+				}
+			}
+			if(p==W_KING || p==B_KING)
+			{
+				var positions = [-1,-1, -1,0, -1,1, 0,-1, 0,1, 1,-1, 1,0, 1,1];
+				board[y][x] = EMPTY;
+				for(var i=0; i<positions.length; i+=2)
+				{
+					var xtest = (x+positions[i]); var ytest = (y+positions[i+1]);
+					if( xtest>=0 && xtest<8 && ytest>=0 && ytest<8)
+					{
+						var temp = board[ytest][xtest];
+						board[ytest][xtest] = p;
+						if( (temp==EMPTY || areEnemies(p, temp)) && !isDanger(xtest, ytest) ) add(moves, xtest,ytest);
+						board[ytest][xtest] = temp;
+					}
+				}
+				board[y][x] = p;
+				if(p>0 && x==4 && y==7)
+				{
+					if(board[7][5]==EMPTY && board[7][6]==EMPTY && board[7][7]==W_ROOK) add(moves, 6,7);
+					if(board[7][3]==EMPTY && board[7][2]==EMPTY && board[7][1]==EMPTY && board[7][0]==W_ROOK) add(moves, 2,7);
+				}
+				else if(!singlePlayer && p<0 && x==4 && y==0)
+				{
+					if(board[0][5]==EMPTY && board[0][6]==EMPTY && board[0][7]==B_ROOK) add(moves, 6,0);
+					if(board[0][3]==EMPTY && board[0][2]==EMPTY && board[0][1]==EMPTY && board[0][0]==B_ROOK) add(moves, 2,0);
+				}
+			}
+			return moves;
+		}
+		function isLegalMove(x,y,dx,dy)
+		{
+			var p = board[y][x];
+			var moves = legalMoves(x,y);
+			for(var i=0; i<moves.length; i+=2) {
+				if( moves[i] == dx && moves[i+1] == dy)
+					return true;
+			}
+			return false;
+		}
 		for(var y=0; y<board.length; y++)
 		{
 			for(var x=0; x<board[y].length; x++)
@@ -113,8 +240,8 @@
 					document.getElementById('highlight'+selectedx+""+selectedy).src = "highlight_red.png";
 					highlightx = selectedx; highlighty = selectedy;
 					var legal = legalMoves(selectedx, selectedy);
-					for(i=0; i<legal.length; i+=4)
-						document.getElementById('highlight'+(legal[i+2])+""+(legal[i+3])).src = "highlight_blue.png";
+					for(i=0; i<legal.length; i+=2)
+						document.getElementById('highlight'+(legal[i])+""+(legal[i+1])).src = "highlight_blue.png";
 					document.onmousedown = released; 
 					document.onmousemove = update;
 					document.onmouseup = falsefunc;
@@ -136,11 +263,10 @@
 			document.getElementById('square'+selectedx+""+selectedy).src = "empty.gif";
 			//movePicture(board[selectedy][selectedx], selectedx*SIZE, selectedy*SIZE, x*SIZE, y*SIZE);
 			var legal = legalMoves(selectedx, selectedy);
-			for(var i=0; i<legal.length; i+=4)
-				document.getElementById('highlight'+(legal[i+2])+""+(legal[i+3])).src = "empty.gif";
+			for(var i=0; i<legal.length; i+=2)
+				document.getElementById('highlight'+(legal[i])+""+(legal[i+1])).src = "empty.gif";
 			var selectNext = false;
-			if( isLegalMove(selectedx, selectedy, x, y) )
-			{
+			if( isLegalMove(selectedx, selectedy, x, y) ) {
 				max_recursion_depth = document.getElementById('recursion-depth').value;
 				status(moveValue(selectedx, selectedy, x, y, 0));
 				
@@ -206,13 +332,20 @@
 			var start_compmove_time = +new Date();
 			max_recursion_depth = document.getElementById('recursion-depth').value;
 			if(winner) return;
-			var moves = new Array();
+			var moves = [];
 			for(var x=0; x<8; x++)
 			{
 				for(var y=0; y<8; y++)
 				{
-					if(board[y][x]<0)
-						moves = moves.concat(legalMoves(x,y));
+					if(board[y][x]<0) {
+						var these_moves = legalMoves(x,y);
+						for(var i=0; i<these_moves.length; i+=2) {
+							moves.push(x);
+							moves.push(y);
+							moves.push(these_moves[i]);
+							moves.push(these_moves[i+1]);
+						}
+					}
 				}
 			}
 			var bestMove = [-1, -1, -1, -1];
@@ -294,9 +427,9 @@
 						if(board[ey][ex]!=EMPTY && areEnemies(piece, board[ey][ex]) )
 						{
 							var enemyMoves = legalMoves(ex, ey);
-							for(var i=0; i<enemyMoves.length-3; i+=4)
+							for(var i=0; i<enemyMoves.length; i+=2)
 							{
-								var thisValue = moveValue(ex, ey, enemyMoves[i+2], enemyMoves[i+3], recursion_depth+1);
+								var thisValue = moveValue(ex, ey, enemyMoves[i], enemyMoves[i+1], recursion_depth+1);
 								if(thisValue>bestValue)
 									bestValue = thisValue;
 							}
@@ -330,134 +463,6 @@
 				case B_KING: return "b_king.gif";
 			}
 		}
-		function legalMoves(x,y)
-		{
-			var p = board[y][x];
-			var moves = new Array();
-			if(p==W_PAWN || p==B_PAWN)
-			{
-				if(p>0) direction=-1; else direction=1;
-				if(y+direction<8 && y+direction>=0 && board[y+direction][x]==EMPTY) add(moves, x,y,x,y+direction);
-				if( ( (p>0 && y==6) || ( p<0 && y==1) ) && board[y+direction][x]==EMPTY && board[y+2*direction][x]==EMPTY) add(moves, x,y,x,y+2*direction);
-				if(x+1<8 && y+direction<8 && y+direction>=0 && areEnemies(p, board[y+direction][x+1]) ) add(moves, x,y,x+1,y+direction);
-				if(x-1>=0 && y+direction<8 && y+direction>=0 && areEnemies(p, board[y+direction][x-1]) ) add(moves, x,y,x-1,y+direction);
-			}
-			else if(p==W_KNIGHT || p==B_KNIGHT)
-			{
-				for(var i=-2; i<=2; i++)
-					for(var j=-2; j<=2; j++)
-					{
-						var testx = i+x; var testy = j+y;
-						if(i!=0 && j!=0 && Math.abs(i)!=Math.abs(j) && testx>=0 && testx<8 && testy>=0 && testy<8 && ( board[testy][testx]==EMPTY || areEnemies(p, board[testy][testx]) ) )
-							add(moves, x,y,testx,testy);
-					}
-			}
-			else if(p==W_BISHOP || p==B_BISHOP)
-			{
-				for(var xdir=-1; xdir<=1; xdir+=2)
-				{
-					for(var ydir=-1; ydir<=1; ydir+=2)
-					{
-						var i=x+xdir; var j=y+ydir;
-						while(j>=0 && j<8 && i>=0 && i<8 && (board[j][i]==EMPTY || areEnemies(p, board[j][i])) )
-						{
-							add(moves, x,y,i,j);
-							if(board[j][i]!=EMPTY) break;
-							i+=xdir; j+=ydir;
-						}
-					}
-				}
-			}
-			else if(p==W_ROOK || p==B_ROOK)
-			{
-				for(var xdir=-1; xdir<=1; xdir++)
-				{
-					for(var ydir=-1; ydir<=1; ydir++)
-					{
-						if(Math.abs(xdir)!=Math.abs(ydir))
-						{
-							var i=x+xdir; var j=y+ydir;
-							while(j>=0 && j<8 && i>=0 && i<8 && (board[j][i]==EMPTY || areEnemies(p, board[j][i])) )
-							{
-								add(moves, x,y,i,j);
-								if(board[j][i]!=EMPTY) break;
-								i+=xdir; j+=ydir;
-							}
-						}
-					}
-				}
-			}
-			if(p==W_QUEEN || p==B_QUEEN)
-			{
-				for(var xdir=-1; xdir<=1; xdir+=2)
-				{
-					for(var ydir=-1; ydir<=1; ydir+=2)
-					{
-						var i=x+xdir; var j=y+ydir;
-						while(j>=0 && j<8 && i>=0 && i<8 && (board[j][i]==EMPTY || areEnemies(p, board[j][i])) )
-						{
-							add(moves, x,y,i,j);
-							if(board[j][i]!=EMPTY) break;
-							i+=xdir; j+=ydir;
-						}
-					}
-				}
-				for(var xdir=-1; xdir<=1; xdir++)
-				{
-					for(var ydir=-1; ydir<=1; ydir++)
-					{
-						if(Math.abs(xdir)!=Math.abs(ydir))
-						{
-							var i=x+xdir; var j=y+ydir;
-							while(j>=0 && j<8 && i>=0 && i<8 && (board[j][i]==EMPTY || areEnemies(p, board[j][i])) )
-							{
-								add(moves, x,y,i,j);
-								if(board[j][i]!=EMPTY) break;
-								i+=xdir; j+=ydir;
-							}
-						}
-					}
-				}
-			}
-			if(p==W_KING || p==B_KING)
-			{
-				var positions = [-1,-1, -1,0, -1,1, 0,-1, 0,1, 1,-1, 1,0, 1,1];
-				board[y][x] = EMPTY;
-				for(var i=0; i<positions.length; i+=2)
-				{
-					var xtest = (x+positions[i]); var ytest = (y+positions[i+1]);
-					if( xtest>=0 && xtest<8 && ytest>=0 && ytest<8)
-					{
-						var temp = board[ytest][xtest];
-						board[ytest][xtest] = p;
-						if( (temp==EMPTY || areEnemies(p, temp)) && !isDanger(xtest, ytest) ) add(moves, x,y,xtest,ytest);
-						board[ytest][xtest] = temp;
-					}
-				}
-				board[y][x] = p;
-				if(p>0 && x==4 && y==7)
-				{
-					if(board[7][5]==EMPTY && board[7][6]==EMPTY && board[7][7]==W_ROOK) add(moves, 4,7,6,7);
-					if(board[7][3]==EMPTY && board[7][2]==EMPTY && board[7][1]==EMPTY && board[7][0]==W_ROOK) add(moves, 4,7,2,7);
-				}
-				else if(!singlePlayer && p<0 && x==4 && y==0)
-				{
-					if(board[0][5]==EMPTY && board[0][6]==EMPTY && board[0][7]==B_ROOK) add(moves, 4,0,6,0);
-					if(board[0][3]==EMPTY && board[0][2]==EMPTY && board[0][1]==EMPTY && board[0][0]==B_ROOK) add(moves, 4,0,2,0);
-				}
-			}
-			return moves;
-		}
-		function isLegalMove(x,y,dx,dy)
-		{
-			var p = board[y][x];
-			var moves = legalmoves(x,y);
-			for(var i=0; i<moves.length; i+=4) {
-				if( moves[i+2] == dx && moves[i+3] == dy)
-					return true;
-			}
-			return false;
-		}
 		function areEnemies(a, b)
 		{
 			if( !(a==EMPTY || b==EMPTY) && ((a>0 && b<0) || (a<0 && b>0)) )
@@ -471,18 +476,18 @@
 			{
 				for(var ey=0; ey<8; ey++)
 				{
+					if(Math.abs(p)==W_KING && Math.abs(board[ey][ex])==W_KING)
+						continue; //king can't be taken by another king
 					if(areEnemies(p, board[ey][ex]) && isLegalMove(ex,ey, xCoord,yCoord))
 						return true;
 				}
 			}
 			return false;
 		}
-		function add(a, x,y,i,j)
+		function add(a, x, y)
 		{
 			a.push(x);
 			a.push(y);
-			a.push(i);
-			a.push(j);
 		}
 		function falsefunc() {return false;}
 		function truefunc() {return true;}
