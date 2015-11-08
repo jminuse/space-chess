@@ -1,0 +1,561 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="UTF-8">
+        <title>JChess</title>
+    </head>
+    <body style="color:white; background-color:#510; text-align:center">
+		Recursion depth: 1<input id="recursion-depth" type="range" min="1" max="5" value="3"/>5
+		<div id='status-bar' style='font-size:150%;'></div>
+        <script>
+		function status(s) {
+			document.getElementById('status-bar').innerHTML = s;
+			setTimeout(function(){ document.getElementById('status-bar').innerHTML = ''; }, 2000);
+		}
+		var EMPTY = 0;
+		var W_PAWN = 1;
+		var B_PAWN = -1;
+		var W_KNIGHT = 6;
+		var B_KNIGHT = -6;
+		var W_BISHOP = 7;
+		var B_BISHOP = -7;
+		var W_ROOK = 10;
+		var B_ROOK = -10;
+		var W_QUEEN = 15;
+		var B_QUEEN = -15;
+		var W_KING = 1000;
+		var B_KING = -1000;
+		var SIZE = 60;
+		var X_OFFSET = window.innerWidth/2-SIZE*4;
+		var Y_OFFSET = 100;
+		var mousex = 0;
+		var mousey = 0;
+		var algor = 0;
+		var selectedx = -1;
+		var selectedy = -1;
+		var highlightx = -1;
+		var highlighty = -1;
+		var whoseTurn = 1;
+		var winner = false;
+		var castling = -1;
+		var singlePlayer = true;
+		board = [[B_ROOK,B_KNIGHT,B_BISHOP,B_QUEEN,B_KING,B_BISHOP,B_KNIGHT,B_ROOK],[B_PAWN,B_PAWN,B_PAWN,B_PAWN,B_PAWN,B_PAWN,B_PAWN,B_PAWN],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[0,0,0,0,0,0,0,0],[W_PAWN,W_PAWN,W_PAWN,W_PAWN,W_PAWN,W_PAWN,W_PAWN,W_PAWN],[W_ROOK,W_KNIGHT,W_BISHOP,W_QUEEN,W_KING,W_BISHOP,W_KNIGHT,W_ROOK]];
+		document.write("<img style='position:absolute; left:"+X_OFFSET+"px; top:"+Y_OFFSET+"px' width='"+SIZE*8+"' height='"+SIZE*8+"' alt='Board' id='boardPic' src='chessboard.jpg'>");
+		for(var y=0; y<board.length; y++)
+		{
+			for(var x=0; x<board[y].length; x++)
+			{
+				document.write("<img style='position:absolute; left:"+(X_OFFSET+x*SIZE+5)+"px; top:"+(Y_OFFSET+y*SIZE+5)+"px' width='"+(SIZE-10)+"' height='"+(SIZE-10)+"' alt='Piece' src='empty.gif' id='highlight"+x+""+y+"'>");
+			}
+			document.write("<br>");
+		}
+		for(var y=0; y<board.length; y++)
+		{
+			for(var x=0; x<board[y].length; x++)
+			{
+				document.write(picture(board[y][x], x*SIZE+X_OFFSET, y*SIZE+Y_OFFSET));
+			}
+			document.write("<br>");
+		}
+		document.write("<img style='position:absolute; left:"+X_OFFSET+"px; top:"+Y_OFFSET+"px' width='"+SIZE+"' height='"+SIZE+"' alt='Selected Piece' id='selectedPiece' src='empty.gif'>");
+		document.onmousedown = pressed;
+		update();
+		function movePicture(pieceNumber, startx, starty, endx, endy)
+		{
+			document.getElementById('selectedPiece').style.left = +X_OFFSET+startx+"px";
+			document.getElementById('selectedPiece').style.top = Y_OFFSET+starty+"px";
+			document.getElementById('selectedPiece').src = pictureFile(pieceNumber);
+			while(Math.round(startx)!=Math.round(endx) || Math.round(starty)!=Math.round(endy))
+			{
+				setTimeout(
+					"startx+=(endx-startx)/1000; starty+=(endy-starty)/1000;"+
+					"document.getElementById('selectedPiece').style.left = '+Math.round(X_OFFSET+startx)+px';"+
+					"document.getElementById('selectedPiece').style.top = '+Math.round(Y_OFFSET+starty)+px'", 10);
+			}
+			document.getElementById('selectedPiece').src = "empty.gif";
+		}
+		function update(e)
+		{
+			getMouseXY(e);
+		}
+		function getMouseXY(e) // works on IE6,FF,Moz,Opera7
+		{ 
+			if (!e) e = window.event; // works on IE, but not NS (we rely on NS passing us the event)
+
+			if (e)
+			{ 
+				if (e.pageX || e.pageY)
+				{ // this doesn't work on IE6!! (works on FF,Moz,Opera7)
+					mousex = e.pageX;
+					mousey = e.pageY;
+					algor = '[e.pageX]';
+					if (e.clientX || e.clientY) algor += ' [e.clientX] ';
+				}
+				else if (e.clientX || e.clientY)
+				{ // works on IE6,FF,Moz,Opera7
+					mousex = e.clientX + document.body.scrollLeft;
+					mousey = e.clientY + document.body.scrollTop;
+					algor = '[e.clientX]';
+					if (e.pageX || e.pageY) algor += ' [e.pageX] ';
+				}  
+			}
+		}
+		function pressed(e)
+		{
+			getMouseXY(e);
+			if(!winner && selectedx<0)
+			{
+				selectedx = Math.floor((mousex-X_OFFSET)/SIZE);
+				selectedy = Math.floor((mousey-Y_OFFSET)/SIZE);
+				if(selectedx>=0 && selectedx<8 && selectedy>=0 && selectedy<8 && board[selectedy][selectedx]!=EMPTY && whoseTurn==(board[selectedy][selectedx]>0) )
+				{
+					if(highlightx>=0) document.getElementById('highlight'+highlightx+""+highlighty).src = "empty.gif";
+					document.getElementById('highlight'+selectedx+""+selectedy).src = "highlight_red.png";
+					highlightx = selectedx; highlighty = selectedy;
+					var legal = legalMoves(selectedx, selectedy);
+					for(i=0; i<legal.length; i+=4)
+						document.getElementById('highlight'+(legal[i+2])+""+(legal[i+3])).src = "highlight_blue.png";
+					document.onmousedown = released; 
+					document.onmousemove = update;
+					document.onmouseup = falsefunc;
+				}
+				else {selectedx = -1;}
+			}
+		}
+		function dragged(e)
+		{
+			update(e);
+			return false;
+		}
+		function released(e)
+		{
+			//status("Mouse released.");
+			getMouseXY(e);
+			var x = Math.floor((mousex-X_OFFSET)/SIZE);
+			var y = Math.floor((mousey-Y_OFFSET)/SIZE);
+			document.getElementById('square'+selectedx+""+selectedy).src = "empty.gif";
+			//movePicture(board[selectedy][selectedx], selectedx*SIZE, selectedy*SIZE, x*SIZE, y*SIZE);
+			var legal = legalMoves(selectedx, selectedy);
+			for(var i=0; i<legal.length; i+=4)
+				document.getElementById('highlight'+(legal[i+2])+""+(legal[i+3])).src = "empty.gif";
+			var selectNext = false;
+			if( isLegalMove(selectedx, selectedy, x, y) )
+			{
+				max_recursion_depth = document.getElementById('recursion-depth').value;
+				status(moveValue(selectedx, selectedy, x, y, 0));
+				
+				if(board[y][x]==W_KING || board[y][x]==B_KING) winner=true;
+				if( (board[selectedy][selectedx]==W_PAWN && y==0) || (board[selectedy][selectedx]==B_PAWN && y==7) )
+					board[selectedy][selectedx] = W_QUEEN*board[selectedy][selectedx]/Math.abs(board[selectedy][selectedx]);
+				board[y][x] = board[selectedy][selectedx];
+				if(!(y==selectedy && x==selectedx))
+					board[selectedy][selectedx] = 0;
+				if(castling>=0)
+				{
+					if(castling==0) move(0,0, 0,3);
+					else if(castling==1) move(0,7, 0,5);
+					else if(castling==2) move(7,7, 7,5);
+					else if(castling==3) move(7,0, 7,3);
+					castling = -1;
+				}
+				document.getElementById('square'+x+""+y).src = pictureFile(board[y][x]);
+				if(winner && whoseTurn==0) status("Black wins!");
+				else if(winner && whoseTurn==1) status("White wins!");
+				if(whoseTurn==0) whoseTurn=1;
+				else whoseTurn=0;
+				for(var tx=0; tx<8; tx++)
+					for(var ty=0; ty<8; ty++)
+					{
+						if(Math.abs(board[ty][tx])==W_KING && isDanger(tx,ty))
+							status("Check!");
+					}
+			}
+			else
+			{
+				document.getElementById('square'+selectedx+""+selectedy).src = pictureFile(board[selectedy][selectedx]);
+				castling = -1;
+				selectNext = ( (board[y][x]>0) == whoseTurn);
+			}
+			document.getElementById('highlight'+x+""+y).src = "highlight_red.png";
+			document.getElementById('highlight'+highlightx+""+highlighty).src = "empty.gif";
+			highlightx = x; highlighty = y;
+			selectedx = -1;
+			document.onmousemove = null;
+			document.onmousedown = pressed;
+			document.onmouseup = null;
+			if(selectNext) pressed(e);
+			if(singlePlayer && whoseTurn==0) setTimeout( compMove, 100 );
+		}
+		function move(y, x, dy, dx)
+		{
+			var winningPlayer = -1;
+			if(board[dy][dx]==W_KING) winningPlayer=0;
+			else if(board[dy][dx]==W_KING) winningPlayer=1;
+			if(!(y==dy && x==dx))
+			{
+				board[dy][dx] = board[y][x];
+				board[y][x] = 0;
+			}
+			document.getElementById('square'+dx+""+dy).src = pictureFile(board[dy][dx]);
+			document.getElementById('square'+x+""+y).src = "empty.gif";
+			if(winningPlayer==0) status("Black wins!");
+			if(winningPlayer==1) status("White wins!");
+		}
+		function compMove()
+		{
+			var start_compmove_time = +new Date();
+			max_recursion_depth = document.getElementById('recursion-depth').value;
+			if(winner) return;
+			var moves = new Array();
+			for(var x=0; x<8; x++)
+			{
+				for(var y=0; y<8; y++)
+				{
+					if(board[y][x]<0)
+						moves = moves.concat(legalMoves(x,y));
+				}
+			}
+			var bestMove = [-1, -1, -1, -1];
+			var bestValue = -10000;
+			for(var moveNumber=0; moveNumber<moves.length; moveNumber+=4)
+			{
+				//start_time = +new Date();
+				//current_time = start_time;
+				//max_recursion_time = 100.0*max_recursion_depth/moves.length;
+				//recursion_counter = 0;
+				
+				var thisValue = moveValue(moves[moveNumber], moves[moveNumber+1], moves[moveNumber+2], moves[moveNumber+3], 0);
+				
+				if(thisValue>bestValue || (thisValue==bestValue && Math.random()<0.5) )
+				{
+					bestMove = [moves[moveNumber], moves[moveNumber+1], moves[moveNumber+2], moves[moveNumber+3]];
+					bestValue = thisValue;
+				}
+			}
+			var noLegalMoves;
+			if(bestMove[0]==-1)
+				noLegalMoves = true;
+			else
+			{
+				noLegalMoves = false;
+				if(board[bestMove[1]][bestMove[0]]==B_PAWN && bestMove[3]==7)
+					board[bestMove[1]][bestMove[0]]=B_PAWN;
+				move(bestMove[1], bestMove[0], bestMove[3], bestMove[2]);
+				document.getElementById('highlight'+bestMove[2]+""+bestMove[3]).src = "highlight_red.png";
+				document.getElementById('highlight'+highlightx+""+highlighty).src = "empty.gif";
+				highlightx = bestMove[2]; highlighty = bestMove[3]; 
+			}
+			for(var tx=0; tx<8; tx++)
+				for(var ty=0; ty<8; ty++)
+				{
+					if(Math.abs(board[ty][tx])==W_KING && isDanger(tx,ty))
+					{
+						if(noLegalMoves)
+							{winner = true; status("Checkmate!");}
+						else
+							status("Check!")
+					}
+				}
+			if(noLegalMoves && !winner)
+				status("Stalemate...");
+			castling = -1;
+			whoseTurn = 1;
+			//status( ((new Date()) - start_compmove_time)/1000 + 's');
+		}
+		function moveValue(orix, oriy, destx, desty, recursion_depth)
+		{
+			var piece = board[oriy][orix];
+			var dest = board[desty][destx];
+			var value = 10*Math.abs(dest); //initial value is simply what the move captures
+			if(Math.abs(dest)==W_KING)
+				return value; //return immediately if checkmate is found
+			if(Math.abs(piece)!=W_KING) { //favor moving toward center of board, except for king
+				var factor = 0.1;
+				if(Math.abs(piece)==W_PAWN) factor = 0.11; //favor pawn development more
+				value += factor*(8-Math.abs(4-destx)-Math.abs(4-desty));
+			}
+			if((piece==W_PAWN && desty==0) || (piece==B_PAWN && desty==7)) //favor pawn promotion
+				value = 10*(W_QUEEN-W_PAWN);
+			
+			//recursion_counter++;
+			//if(recursion_counter>1000) {
+			//	recursion_counter = 0;
+			//	current_time = +new Date();
+			//}
+			//if(current_time-start_time < max_recursion_time) {
+			
+			if(recursion_depth<max_recursion_depth) {
+				board[oriy][orix] = EMPTY; board[desty][destx] = piece;
+				var bestValue = 0;
+				for(var ex=0; ex<8; ex++)
+				{
+					for(var ey=0; ey<8; ey++)
+					{
+						if(board[ey][ex]!=EMPTY && areEnemies(piece, board[ey][ex]) )
+						{
+							var enemyMoves = legalMoves(ex, ey);
+							for(var i=0; i<enemyMoves.length-3; i+=4)
+							{
+								var thisValue = moveValue(ex, ey, enemyMoves[i+2], enemyMoves[i+3], recursion_depth+1);
+								if(thisValue>bestValue)
+									bestValue = thisValue;
+							}
+						}
+					}
+				}
+				value-=bestValue;
+				board[oriy][orix] = piece; board[desty][destx] = dest;
+			}
+			return value;
+		}
+		function picture(p, x, y)
+		{
+			return "<img style='position:absolute; left:"+x+"px; top:"+(y-SIZE/5)+"px' width='"+SIZE+"' height='"+Math.floor(1.2*SIZE)+"' alt='Piece' src='"+pictureFile(p)+"' id='square"+Math.floor((x-X_OFFSET)/SIZE)+""+Math.floor((y-Y_OFFSET)/SIZE)+"'>";
+		}
+		function pictureFile(p)
+		{
+			switch(p) {
+				case EMPTY: return "empty.gif";
+				case W_PAWN: return "w_pawn.gif";
+				case B_PAWN: return "b_pawn.gif";
+				case W_KNIGHT: return "w_knight.gif";
+				case B_KNIGHT: return "b_knight.gif";
+				case W_BISHOP: return "w_bishop.gif";
+				case B_BISHOP: return "b_bishop.gif";
+				case W_ROOK: return "w_rook.gif";
+				case B_ROOK: return "b_rook.gif";
+				case W_QUEEN: return "w_queen.gif";
+				case B_QUEEN: return "b_queen.gif";
+				case W_KING: return "w_king.gif";
+				case B_KING: return "b_king.gif";
+			}
+		}
+		function legalMoves(x,y)
+		{
+			var p = board[y][x];
+			var moves = new Array();
+			if(p==W_PAWN || p==B_PAWN)
+			{
+				if(p>0) direction=-1; else direction=1;
+				if(y+direction<8 && y+direction>=0 && board[y+direction][x]==EMPTY) add(moves, x,y,x,y+direction);
+				if( ( (p>0 && y==6) || ( p<0 && y==1) ) && board[y+direction][x]==EMPTY && board[y+2*direction][x]==EMPTY) add(moves, x,y,x,y+2*direction);
+				if(x+1<8 && y+direction<8 && y+direction>=0 && areEnemies(p, board[y+direction][x+1]) ) add(moves, x,y,x+1,y+direction);
+				if(x-1>=0 && y+direction<8 && y+direction>=0 && areEnemies(p, board[y+direction][x-1]) ) add(moves, x,y,x-1,y+direction);
+			}
+			else if(p==W_KNIGHT || p==B_KNIGHT)
+			{
+				for(var i=-2; i<=2; i++)
+					for(var j=-2; j<=2; j++)
+					{
+						var testx = i+x; var testy = j+y;
+						if(i!=0 && j!=0 && Math.abs(i)!=Math.abs(j) && testx>=0 && testx<8 && testy>=0 && testy<8 && ( board[testy][testx]==EMPTY || areEnemies(p, board[testy][testx]) ) )
+							add(moves, x,y,testx,testy);
+					}
+			}
+			else if(p==W_BISHOP || p==B_BISHOP)
+			{
+				for(var xdir=-1; xdir<=1; xdir+=2)
+				{
+					for(var ydir=-1; ydir<=1; ydir+=2)
+					{
+						var i=x+xdir; var j=y+ydir;
+						while(j>=0 && j<8 && i>=0 && i<8 && (board[j][i]==EMPTY || areEnemies(p, board[j][i])) )
+						{
+							add(moves, x,y,i,j);
+							if(board[j][i]!=EMPTY) break;
+							i+=xdir; j+=ydir;
+						}
+					}
+				}
+			}
+			else if(p==W_ROOK || p==B_ROOK)
+			{
+				for(var xdir=-1; xdir<=1; xdir++)
+				{
+					for(var ydir=-1; ydir<=1; ydir++)
+					{
+						if(Math.abs(xdir)!=Math.abs(ydir))
+						{
+							var i=x+xdir; var j=y+ydir;
+							while(j>=0 && j<8 && i>=0 && i<8 && (board[j][i]==EMPTY || areEnemies(p, board[j][i])) )
+							{
+								add(moves, x,y,i,j);
+								if(board[j][i]!=EMPTY) break;
+								i+=xdir; j+=ydir;
+							}
+						}
+					}
+				}
+			}
+			if(p==W_QUEEN || p==B_QUEEN)
+			{
+				for(var xdir=-1; xdir<=1; xdir+=2)
+				{
+					for(var ydir=-1; ydir<=1; ydir+=2)
+					{
+						var i=x+xdir; var j=y+ydir;
+						while(j>=0 && j<8 && i>=0 && i<8 && (board[j][i]==EMPTY || areEnemies(p, board[j][i])) )
+						{
+							add(moves, x,y,i,j);
+							if(board[j][i]!=EMPTY) break;
+							i+=xdir; j+=ydir;
+						}
+					}
+				}
+				for(var xdir=-1; xdir<=1; xdir++)
+				{
+					for(var ydir=-1; ydir<=1; ydir++)
+					{
+						if(Math.abs(xdir)!=Math.abs(ydir))
+						{
+							var i=x+xdir; var j=y+ydir;
+							while(j>=0 && j<8 && i>=0 && i<8 && (board[j][i]==EMPTY || areEnemies(p, board[j][i])) )
+							{
+								add(moves, x,y,i,j);
+								if(board[j][i]!=EMPTY) break;
+								i+=xdir; j+=ydir;
+							}
+						}
+					}
+				}
+			}
+			if(p==W_KING || p==B_KING)
+			{
+				var positions = [-1,-1, -1,0, -1,1, 0,-1, 0,1, 1,-1, 1,0, 1,1];
+				board[y][x] = EMPTY;
+				for(var i=0; i<positions.length; i+=2)
+				{
+					var xtest = (x+positions[i]); var ytest = (y+positions[i+1]);
+					if( xtest>=0 && xtest<8 && ytest>=0 && ytest<8)
+					{
+						var temp = board[ytest][xtest];
+						board[ytest][xtest] = p;
+						if( (temp==EMPTY || areEnemies(p, temp)) && !isDanger(xtest, ytest) ) add(moves, x,y,xtest,ytest);
+						board[ytest][xtest] = temp;
+					}
+				}
+				board[y][x] = p;
+				if(p>0 && x==4 && y==7)
+				{
+					if(board[7][5]==EMPTY && board[7][6]==EMPTY && board[7][7]==W_ROOK) add(moves, 4,7,6,7);
+					if(board[7][3]==EMPTY && board[7][2]==EMPTY && board[7][1]==EMPTY && board[7][0]==W_ROOK) add(moves, 4,7,2,7);
+				}
+				else if(!singlePlayer && p<0 && x==4 && y==0)
+				{
+					if(board[0][5]==EMPTY && board[0][6]==EMPTY && board[0][7]==B_ROOK) add(moves, 4,0,6,0);
+					if(board[0][3]==EMPTY && board[0][2]==EMPTY && board[0][1]==EMPTY && board[0][0]==B_ROOK) add(moves, 4,0,2,0);
+				}
+			}
+			return moves;
+		}
+		function isLegalMove(x,y,dx,dy)
+		{
+			var p = board[y][x];
+			var e = board[dy][dx];
+			if( (p>0 && e>0) || (p<0 && e<0) ) return false;
+			if(p==W_PAWN || p==B_PAWN)
+			{
+				if(e==EMPTY && x==dx && ((p>0 && y>dy) || (p<0 && y<dy)) && (Math.abs(y-dy)==1 || (Math.abs(y-dy)==2 && ((y==1 && board[2][x]==EMPTY) || (y==6 && board[5][x]==EMPTY)))) )
+					return true;
+				if(areEnemies(p,e) && Math.abs(x-dx)==1 && ((p>0 && y>dy) || (p<0 && y<dy)) && Math.abs(y-dy)==1)
+					return true;
+			}
+			else if(p==W_KNIGHT || p==B_KNIGHT)
+			{
+				if( (Math.abs(x-dx)==2 && Math.abs(y-dy)==1) || (Math.abs(x-dx)==1 && Math.abs(y-dy)==2) )
+					return true;
+			}
+			else if(p==W_BISHOP || p==B_BISHOP)
+			{
+				if( Math.abs(x-dx)!=Math.abs(y-dy) )
+					return false;
+				if(dx>x) xDirection=1; else xDirection=-1;
+				if(dy>y) yDirection=1; else yDirection=-1;
+				var j=y+yDirection;
+				for(var i=x+xDirection; i!=dx; i+=xDirection)
+				{
+					if(board[j][i]!=EMPTY)
+						return false;
+					j+=yDirection;
+				}
+				return true;
+			}
+			else if(p==W_ROOK || p==B_ROOK)
+			{
+				if( dx!=x && dy!=y )
+					return false;
+				if(dx>x) xDirection=1; else if(dx<x) xDirection=-1; else xDirection=0;
+				if(dy>y) yDirection=1; else if(dy<y) yDirection=-1; else yDirection=0;
+				var j=y+yDirection;
+				for(var i=x+xDirection; i!=dx || j!=dy; i+=xDirection)
+				{
+					if(board[j][i]!=EMPTY)
+						return false;
+					j+=yDirection;
+				}
+				return true;
+			}
+			else if(p==W_QUEEN || p==B_QUEEN)
+			{
+				if( !(Math.abs(x-dx)==Math.abs(y-dy) || (dx==x || dy==y) ) )
+					return false;
+				if(dx>x) xDirection=1; else if(dx<x) xDirection=-1; else xDirection=0;
+				if(dy>y) yDirection=1; else if(dy<y) yDirection=-1; else yDirection=0;
+				var j=y+yDirection;
+				for(var i=x+xDirection; i!=dx || j!=dy; i+=xDirection)
+				{
+					if(board[j][i]!=EMPTY)
+						return false;
+					j+=yDirection;
+				}
+				return true;
+			}
+			else if(p==W_KING || p==B_KING)
+			{
+				board[dy][dx] = p;
+				board[y][x] = EMPTY;
+				if(Math.abs(x-dx)<=1 && Math.abs(y-dy)<=1 && !isDanger(dx,dy))
+					{board[dy][dx] = e; board[y][x] = p; return true;}
+				board[dy][dx] = e; board[y][x] = p;
+				if(y==dy && x==4 && ((p>0 && y==7)||(p<0 && y==0)) && ( ( dx==2 && board[y][3]==EMPTY && board[y][1]==EMPTY && Math.abs(board[y][0])==W_ROOK ) || ( dx==6 && board[y][5]==EMPTY && Math.abs(board[y][7])==W_ROOK) ) )
+				{
+					if(dy==0 && dx==2) castling=0;
+					else if(dy==0 && dx==6) castling=1;
+					else if(dy==7 && dx==6) castling=2;
+					else if(dy==7 && dx==2) castling=3;
+					return true;
+				}
+			}
+			return false;
+		}
+		function areEnemies(a, b)
+		{
+			if( !(a==EMPTY || b==EMPTY) && ((a>0 && b<0) || (a<0 && b>0)) )
+				return true;
+			return false;
+		}
+		function isDanger(xCoord, yCoord)
+		{
+			var p = board[yCoord][xCoord];
+			for(var ex=0; ex<8; ex++)
+			{
+				for(var ey=0; ey<8; ey++)
+				{
+					if(areEnemies(p, board[ey][ex]) && isLegalMove(ex,ey, xCoord,yCoord))
+						return true;
+				}
+			}
+			return false;
+		}
+		function add(a, x,y,i,j)
+		{
+			a.push(x);
+			a.push(y);
+			a.push(i);
+			a.push(j);
+		}
+		function falsefunc() {return false;}
+		function truefunc() {return true;}
+        </script>
+    </body>
+</html xlmns="http://www.w3c.org/1999/xhtml">
