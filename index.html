@@ -47,10 +47,10 @@
 			if(p==W_PAWN || p==B_PAWN)
 			{
 				if(p>0) direction=-1; else direction=1;
-				if(y+direction<8 && y+direction>=0 && board[y+direction][x]==EMPTY) add(moves, x,y+direction);
-				if( ( (p>0 && y==6) || ( p<0 && y==1) ) && board[y+direction][x]==EMPTY && board[y+2*direction][x]==EMPTY) add(moves, x,y+2*direction);
-				if(x+1<8 && y+direction<8 && y+direction>=0 && areEnemies(p, board[y+direction][x+1]) ) add(moves, x+1,y+direction);
-				if(x-1>=0 && y+direction<8 && y+direction>=0 && areEnemies(p, board[y+direction][x-1]) ) add(moves, x-1,y+direction);
+				if(y+direction<8 && y+direction>=0 && board[y+direction][x]==EMPTY) moves.push2(x,y+direction);
+				if( ( (p>0 && y==6) || ( p<0 && y==1) ) && board[y+direction][x]==EMPTY && board[y+2*direction][x]==EMPTY) moves.push2(x,y+2*direction);
+				if(x+1<8 && y+direction<8 && y+direction>=0 && areEnemies(p, board[y+direction][x+1]) ) moves.push2(x+1,y+direction);
+				if(x-1>=0 && y+direction<8 && y+direction>=0 && areEnemies(p, board[y+direction][x-1]) ) moves.push2(x-1,y+direction);
 			}
 			else if(p==W_KNIGHT || p==B_KNIGHT)
 			{
@@ -59,7 +59,7 @@
 					{
 						var testx = i+x; var testy = j+y;
 						if(i!=0 && j!=0 && Math.abs(i)!=Math.abs(j) && testx>=0 && testx<8 && testy>=0 && testy<8 && ( board[testy][testx]==EMPTY || areEnemies(p, board[testy][testx]) ) )
-							add(moves, testx,testy);
+							moves.push2(testx,testy);
 					}
 			}
 			else if(p==W_BISHOP || p==B_BISHOP)
@@ -71,7 +71,7 @@
 						var i=x+xdir; var j=y+ydir;
 						while(j>=0 && j<8 && i>=0 && i<8 && (board[j][i]==EMPTY || areEnemies(p, board[j][i])) )
 						{
-							add(moves, i,j);
+							moves.push2(i,j);
 							if(board[j][i]!=EMPTY) break;
 							i+=xdir; j+=ydir;
 						}
@@ -89,7 +89,7 @@
 							var i=x+xdir; var j=y+ydir;
 							while(j>=0 && j<8 && i>=0 && i<8 && (board[j][i]==EMPTY || areEnemies(p, board[j][i])) )
 							{
-								add(moves, i,j);
+								moves.push2(i,j);
 								if(board[j][i]!=EMPTY) break;
 								i+=xdir; j+=ydir;
 							}
@@ -106,7 +106,7 @@
 						var i=x+xdir; var j=y+ydir;
 						while(j>=0 && j<8 && i>=0 && i<8 && (board[j][i]==EMPTY || areEnemies(p, board[j][i])) )
 						{
-							add(moves, i,j);
+							moves.push2(i,j);
 							if(board[j][i]!=EMPTY) break;
 							i+=xdir; j+=ydir;
 						}
@@ -121,7 +121,7 @@
 							var i=x+xdir; var j=y+ydir;
 							while(j>=0 && j<8 && i>=0 && i<8 && (board[j][i]==EMPTY || areEnemies(p, board[j][i])) )
 							{
-								add(moves, i,j);
+								moves.push2(i,j);
 								if(board[j][i]!=EMPTY) break;
 								i+=xdir; j+=ydir;
 							}
@@ -140,20 +140,20 @@
 					{
 						var temp = board[ytest][xtest];
 						board[ytest][xtest] = p;
-						if( (temp==EMPTY || areEnemies(p, temp)) && !isDanger(xtest, ytest) ) add(moves, xtest,ytest);
+						if( (temp==EMPTY || areEnemies(p, temp)) && !isDanger(xtest, ytest) ) moves.push2(xtest,ytest);
 						board[ytest][xtest] = temp;
 					}
 				}
 				board[y][x] = p;
 				if(p>0 && x==4 && y==7)
 				{
-					if(board[7][5]==EMPTY && board[7][6]==EMPTY && board[7][7]==W_ROOK) add(moves, 6,7);
-					if(board[7][3]==EMPTY && board[7][2]==EMPTY && board[7][1]==EMPTY && board[7][0]==W_ROOK) add(moves, 2,7);
+					if(board[7][5]==EMPTY && board[7][6]==EMPTY && board[7][7]==W_ROOK) moves.push2(6,7);
+					if(board[7][3]==EMPTY && board[7][2]==EMPTY && board[7][1]==EMPTY && board[7][0]==W_ROOK) moves.push2(2,7);
 				}
 				else if(!singlePlayer && p<0 && x==4 && y==0)
 				{
-					if(board[0][5]==EMPTY && board[0][6]==EMPTY && board[0][7]==B_ROOK) add(moves, 6,0);
-					if(board[0][3]==EMPTY && board[0][2]==EMPTY && board[0][1]==EMPTY && board[0][0]==B_ROOK) add(moves, 2,0);
+					if(board[0][5]==EMPTY && board[0][6]==EMPTY && board[0][7]==B_ROOK) moves.push2(6,0);
+					if(board[0][3]==EMPTY && board[0][2]==EMPTY && board[0][1]==EMPTY && board[0][0]==B_ROOK) moves.push2(2,0);
 				}
 			}
 			return moves;
@@ -484,11 +484,7 @@
 			}
 			return false;
 		}
-		function add(a, x, y)
-		{
-			a.push(x);
-			a.push(y);
-		}
+		Array.prototype.push2 = function(x,y) { this.push(x); this.push(y); }
 		function falsefunc() {return false;}
 		function truefunc() {return true;}
         </script>
