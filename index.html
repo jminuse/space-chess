@@ -451,80 +451,10 @@
 		function isLegalMove(x,y,dx,dy)
 		{
 			var p = board[y][x];
-			var e = board[dy][dx];
-			if( (p>0 && e>0) || (p<0 && e<0) ) return false;
-			if(p==W_PAWN || p==B_PAWN)
-			{
-				if(e==EMPTY && x==dx && ((p>0 && y>dy) || (p<0 && y<dy)) && (Math.abs(y-dy)==1 || (Math.abs(y-dy)==2 && ((y==1 && board[2][x]==EMPTY) || (y==6 && board[5][x]==EMPTY)))) )
+			var moves = legalmoves(x,y);
+			for(var i=0; i<moves.length; i+=4) {
+				if( moves[i+2] == dx && moves[i+3] == dy)
 					return true;
-				if(areEnemies(p,e) && Math.abs(x-dx)==1 && ((p>0 && y>dy) || (p<0 && y<dy)) && Math.abs(y-dy)==1)
-					return true;
-			}
-			else if(p==W_KNIGHT || p==B_KNIGHT)
-			{
-				if( (Math.abs(x-dx)==2 && Math.abs(y-dy)==1) || (Math.abs(x-dx)==1 && Math.abs(y-dy)==2) )
-					return true;
-			}
-			else if(p==W_BISHOP || p==B_BISHOP)
-			{
-				if( Math.abs(x-dx)!=Math.abs(y-dy) )
-					return false;
-				if(dx>x) xDirection=1; else xDirection=-1;
-				if(dy>y) yDirection=1; else yDirection=-1;
-				var j=y+yDirection;
-				for(var i=x+xDirection; i!=dx; i+=xDirection)
-				{
-					if(board[j][i]!=EMPTY)
-						return false;
-					j+=yDirection;
-				}
-				return true;
-			}
-			else if(p==W_ROOK || p==B_ROOK)
-			{
-				if( dx!=x && dy!=y )
-					return false;
-				if(dx>x) xDirection=1; else if(dx<x) xDirection=-1; else xDirection=0;
-				if(dy>y) yDirection=1; else if(dy<y) yDirection=-1; else yDirection=0;
-				var j=y+yDirection;
-				for(var i=x+xDirection; i!=dx || j!=dy; i+=xDirection)
-				{
-					if(board[j][i]!=EMPTY)
-						return false;
-					j+=yDirection;
-				}
-				return true;
-			}
-			else if(p==W_QUEEN || p==B_QUEEN)
-			{
-				if( !(Math.abs(x-dx)==Math.abs(y-dy) || (dx==x || dy==y) ) )
-					return false;
-				if(dx>x) xDirection=1; else if(dx<x) xDirection=-1; else xDirection=0;
-				if(dy>y) yDirection=1; else if(dy<y) yDirection=-1; else yDirection=0;
-				var j=y+yDirection;
-				for(var i=x+xDirection; i!=dx || j!=dy; i+=xDirection)
-				{
-					if(board[j][i]!=EMPTY)
-						return false;
-					j+=yDirection;
-				}
-				return true;
-			}
-			else if(p==W_KING || p==B_KING)
-			{
-				board[dy][dx] = p;
-				board[y][x] = EMPTY;
-				if(Math.abs(x-dx)<=1 && Math.abs(y-dy)<=1 && !isDanger(dx,dy))
-					{board[dy][dx] = e; board[y][x] = p; return true;}
-				board[dy][dx] = e; board[y][x] = p;
-				if(y==dy && x==4 && ((p>0 && y==7)||(p<0 && y==0)) && ( ( dx==2 && board[y][3]==EMPTY && board[y][1]==EMPTY && Math.abs(board[y][0])==W_ROOK ) || ( dx==6 && board[y][5]==EMPTY && Math.abs(board[y][7])==W_ROOK) ) )
-				{
-					if(dy==0 && dx==2) castling=0;
-					else if(dy==0 && dx==6) castling=1;
-					else if(dy==7 && dx==6) castling=2;
-					else if(dy==7 && dx==2) castling=3;
-					return true;
-				}
 			}
 			return false;
 		}
